@@ -11,9 +11,25 @@ mydb=mysql.connector.connect(
 mycursor = mydb.cursor() 
 
 
-class specific_query:
-    
-    
+class SpecificQuery:
+
+
+    @staticmethod
+    def get_photoID(name,sdate,edate):
+        sql="""
+            SELECT name, min(photoID)
+            FROM monitor 
+            WHERE 
+                datetime >= %s
+                AND datetime < %s
+                AND name = %s
+        """
+        val=(sdate,edate,name)
+        mycursor.execute(sql,val)
+        myresults=mycursor.fetchall()
+        return myresults[0][1]
+
+
     @staticmethod
     def show_workdays(name,sdate,edate):
         '''các ngày đi làm của một người'''
@@ -36,8 +52,6 @@ class specific_query:
             val=(sdate,edate,name)
             mycursor.execute(sql,val)
             myresult=mycursor.fetchall()
-            for i in myresult:
-                print(i)
             return myresult
 
     @staticmethod

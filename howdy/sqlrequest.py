@@ -25,19 +25,15 @@ class SqlRequest:
             return False, None
         kindof=int(kind)
         myresult=[]
-        stringkey=''
         if kindof==1:
-            x=general_query.count_all_workdays(sdate,edate)
+            x=GeneralQuery.count_all_workdays(sdate,edate)
             myresult=JsonTranform.transfrom(x,['name','appearances','photoID'],3)
         elif kindof==2:
-            x=general_query.count_all_absences(sdate,edate)
+            x=GeneralQuery.count_all_absences(sdate,edate)
             myresult=JsonTranform.transfrom(x,['name','absences','photoID'],3)
         else: 
-            x=general_query.show_days_of_absences(sdate,edate)
-            myresult=JsonTranform.transfrom(x,['name','absentday','dayofweek'],3)
-        # else:
-        #     x=general_query.count_OTdays(sdate,edate)
-        #     myresult=JsonTranform.transfrom(x,['name','day','photoID'],3)
+            x=GeneralQuery.count_OTdays(sdate,edate)
+            myresult=JsonTranform.transfrom(x,['name','OT_days','photoID'],3)
         return True, myresult
     
     @staticmethod
@@ -48,41 +44,44 @@ class SqlRequest:
         edate=request_data['end_date']
         if not DateChecker.check_logic_date(sdate,edate):
             return False, None
-        results=[]
         kindof=int(kind)
+        string_key=''
+        IDphoto=SpecificQuery.get_photoID(name,sdate,edate)
         if kindof==1:
-            y=specific_query.show_workdays(name,sdate,edate)
+            y=SpecificQuery.show_workdays(name,sdate,edate)
             listkey=['name','day','arrival_time','closing_time']
-            results=JsonTranform.transfrom(y,listkey,len(listkey))   
+            results=JsonTranform.transfrom(y,listkey,len(listkey),IDphoto)   
         elif kindof==2 or kindof==3 or kindof==4 or kindof==5 or kindof==6:
             if kindof==2:
-                y=specific_query.count_earlyworking_days(name,sdate,edate)
-                stringkey='earlyworking_days'
+                y=SpecificQuery.count_earlyworking_days(name,sdate,edate)
+                string_key='earlyworking_days'
             elif kindof==3:
-                y=specific_query.count_lateworking_days(name,sdate,edate)
-                stringkey='lateworking_days'
+                y=SpecificQuery.count_lateworking_days(name,sdate,edate)
+                string_key='lateworking_days'
             elif kindof==4:
-                y=specific_query.count_absent_days(name,sdate,edate)
-                stringkey='absent_days'
+                y=SpecificQuery.count_absent_days(name,sdate,edate)
+                string_key='absent_days'
             elif kindof==5:
-                y=specific_query.count_working_days(name,sdate,edate)
-                stringkey='working_days'
+                y=SpecificQuery.count_working_days(name,sdate,edate)
+                string_key='working_days'
             elif kindof==6:
-                y=specific_query.count_ot_days(name,sdate,edate)
-                stringkey='OT_days'
-            listkey=['name',stringkey]
-            results=JsonTranform.transfrom(y,listkey,len(listkey))   
+                y=SpecificQuery.count_ot_days(name,sdate,edate)
+                string_key='OT_days'
+            listkey=['name',string_key]
+            results=JsonTranform.transfrom(y,listkey,len(listkey),IDphoto)    
         elif kindof==7:
-            y=specific_query.count_ot_hours(name,sdate,edate)
+            y=SpecificQuery.show_ot_days(name,sdate,edate)
+            listkey=['name','OTday']
+            results=JsonTranform.transfrom(y,listkey,len(listkey),IDphoto)    
+        else:
+            data={}
+            results=[]
+            y=SpecificQuery.count_ot_hours(name,sdate,edate)
             for i in y:
                 data['name']=i[0]
                 data["OThoursof"+str(i[2])]=str(i[1])
+            data['IDphoto']=IDphoto
             json_data=json.dumps(data,ensure_ascii=False)
             json_data_json=json.loads(json_data)
-            results.append(json_data_json)
-        else:
-            y=specific_query.show_ot_days(name,sdate,edate)
-            listkey=['name','OTday']
-            results=JsonTranform.transfrom(y,listkey,len(listkey))   
+            results.append(json_data_json)  
         return True, results
-       

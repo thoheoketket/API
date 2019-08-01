@@ -5,9 +5,6 @@ from rest_framework.decorators import api_view
 import base64
 import numpy as np
 import mysql.connector
-from .generalquery import general_query
-from .specquery import specific_query
-from datetime import datetime
 import json
 from .checkinput import DateChecker
 from .sqlrequest import *
@@ -30,11 +27,12 @@ def detect_api(request):
 @api_view(['GET'])
 def one_detect_api(request):
     request_data = request.GET.dict()
-    try:
-        stt, result= SqlRequest.request_one(request_data)
-    except:
-        SqlRequest.reconnect()
-    if not stt:
+    status, result= SqlRequest.request_one(request_data)
+    # try:
+       
+    # except:
+    #     SqlRequest.reconnect()
+    if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:
         return JsonResponse({"recevied": result})

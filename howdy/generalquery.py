@@ -11,7 +11,7 @@ mydb=mysql.connector.connect(
 mycursor = mydb.cursor() 
 
 
-class general_query:
+class GeneralQuery:
 
 
     @staticmethod
@@ -237,59 +237,68 @@ class general_query:
 
     @staticmethod
     def count_OTdays(sdate,edate):
-        sql="""
-            SELECT 
-            Z.name, 
-            Z.day, 
-            monitor.photoID 
-            from 
-            (
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
                 SELECT 
-                X.name, 
-                X.day, 
-                X.gioden, 
-                X.giove 
+                M.name, 
+                M.OTdays, 
+                N.IDphoto 
                 from 
                 (
                     SELECT 
-                    name, 
-                    DATE(datetime) as day, 
-                    min(datetime) as gioden, 
-                    max(datetime) as giove 
-                    FROM 
-                    monitor 
-                    WHERE 
-                    datetime >= %s
-                    AND datetime < %s
-                    group by 
-                    name, 
-                    day
-                ) As X 
-                where 
-                (
+                    X.name, 
+                    count(X.day) as OTdays 
+                    from 
                     (
-                    DAYOFWEEK(X.day)<> 1 
-                    and DAYOFWEEK(X.day)<> 7
+                        SELECT 
+                        name, 
+                        DATE(datetime) as day, 
+                        min(datetime) as gioden, 
+                        max(datetime) as giove 
+                        FROM 
+                        monitor 
+                        WHERE 
+                        datetime >= %s
+                        AND datetime < %s
+                        group by 
+                        name, 
+                        day
+                    ) As X 
+                    where 
+                    (
+                        (
+                        DAYOFWEEK(X.day)<> 1 
+                        and DAYOFWEEK(X.day)<> 7
+                        ) 
+                        and (
+                        HOUR(X.giove)> 17 
+                        OR (
+                            MINUTE(X.giove)> 30 
+                            AND HOUR(X.giove)= 17
+                        )
+                        )
                     ) 
-                    and (
-                    HOUR(X.giove)> 17 
-                    OR (
-                        MINUTE(X.giove)> 30 
-                        AND HOUR(X.giove)= 17
-                    )
-                    )
-                ) 
-                OR DAYOFWEEK(X.day)= 1 
-                OR DAYOFWEEK(X.day)= 7
-            ) as Z, 
-            monitor 
-            WHERE 
-            Z.name = monitor.name
-        """
-        val=(sdate,edate)
-        mycursor.execute(sql,val)
-        myresult=mycursor.fetchall()
-        return myresult
+                    OR DAYOFWEEK(X.day)= 1 
+                    OR DAYOFWEEK(X.day)= 7 
+                    group by 
+                    name
+                ) as M, 
+                (
+                    select 
+                    name, 
+                    max(photoID) as IDphoto 
+                    from 
+                    monitor 
+                    group by 
+                    name
+                ) as N 
+                WHERE 
+                M.name = N.name              
+            """
+            val=(sdate,edate)
+            mycursor.execute(sql,val)
+            myresult=mycursor.fetchall()
+            return myresult
 
        
 
