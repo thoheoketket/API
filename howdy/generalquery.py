@@ -300,7 +300,69 @@ class GeneralQuery:
             myresult=mycursor.fetchall()
             return myresult
 
-       
+    @staticmethod
+    def count_latedays(sdate,edate):
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT 
+                M.name, 
+                M.latedays, 
+                N.IDphoto 
+                from 
+                (
+                    SELECT 
+                    X.name, 
+                    count(X.day) as latedays 
+                    from 
+                    (
+                        SELECT 
+                        name, 
+                        DATE(datetime) as day, 
+                        min(datetime) as gioden, 
+                        max(datetime) as giove 
+                        FROM 
+                        monitor 
+                        WHERE 
+                        datetime >= %s
+                        AND datetime < %s 
+                        group by 
+                        name, 
+                        day
+                    ) As X 
+                    where 
+                    (
+                        (
+                        (
+                            HOUR(gioden)= 9 
+                            and MINUTE(gioden)> 5
+                        ) 
+                        OR HOUR(gioden)> 9
+                        ) 
+                        and HOUR(gioden)< 12
+                    ) 
+                    OR (
+                        HOUR(gioden) BETWEEN 14 
+                        and 17
+                    ) 
+                    group by 
+                    name
+                ) as M, 
+                (
+                    select 
+                    name, 
+                    max(photoID) as IDphoto 
+                    from 
+                    monitor 
+                    group by 
+                    name
+                ) as N 
+                WHERE 
+                M.name = N.name   
+            """
+            val=(sdate,edate)
+            mycursor.execute(sql,val)
+            myresult=mycursor.fetchall()
+            return myresult
 
 
 
