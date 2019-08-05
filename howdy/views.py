@@ -27,11 +27,10 @@ def detect_api(request):
 @api_view(['GET'])
 def one_detect_api(request):
     request_data = request.GET.dict()
-    status, result= SqlRequest.request_one(request_data)
-    # try:
-       
-    # except:
-    #     SqlRequest.reconnect()
+    try:
+        status, result= SqlRequest.request_one(request_data)      
+    except:
+        SqlRequest.reconnect()
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:
