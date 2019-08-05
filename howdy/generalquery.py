@@ -161,8 +161,7 @@ class GeneralQuery:
             myresult=mycursor.fetchall()
             return myresult
         
-    @staticmethod        
-    def show_days_of_absences(sdate,edate):
+
         '''in ra các ngày vắng mặt của từng người kèm theo thứ của ngày hôm đó'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -364,6 +363,51 @@ class GeneralQuery:
             myresult=mycursor.fetchall()
             return myresult
 
-
+    @staticmethod        
+    def count_by_day(sdate,edate):
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT 
+                M.day, N.numbers, M.late 
+                from 
+                (SELECT 
+                    Z.day, count(Z.name) as late 
+                    from 
+                    (SELECT 
+                        X.name, X.day, X.gioden 
+                        from (SELECT 
+                            name, DATE(datetime) as day, min(datetime) as gioden 
+                            FROM monitor 
+                            WHERE 
+                            datetime >= %s AND datetime < %s
+                            group by 
+                            name, day
+                        ) as X 
+                        WHERE 
+                        (HOUR(X.gioden)< 12 and (HOUR(X.gioden)> 9 or (HOUR(X.gioden)= 9 and MINUTE(X.gioden)> 5))) or (HOUR(gioden) BETWEEN 14 and 17)
+                        ) as Z 
+                    GROUP by 
+                    Z.day
+                ) as M 
+                INNER JOIN (
+                    SELECT 
+                    X.day, COUNT(X.name) as numbers 
+                    from 
+                    (
+                        SELECT 
+                        name, DATE(datetime) as day 
+                        FROM monitor 
+                        WHERE 
+                        datetime >= %s AND datetime < %s
+                        group by 
+                        name, day
+                    ) as X 
+                    GROUP by X.day) as N 
+                    ON M.day = N.day
+            """
+            val=(sdate,edate,sdate,edate)
+            mycursor.execute(sql,val)
+            myresult=mycursor.fetchall()
+            return myresult
 
 

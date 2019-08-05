@@ -34,9 +34,12 @@ class SqlRequest:
         elif kindof==3:
             x=GeneralQuery.count_OTdays(sdate,edate)
             myresult=JsonTranform.transfrom(x,['name','OT_days','photoID'],3)
-        else: 
+        elif kindof==4:
             x=GeneralQuery.count_latedays(sdate,edate)
             myresult=JsonTranform.transfrom(x,['name','late_days','photoID'],3)
+        else:
+            x=GeneralQuery.count_by_day(sdate,edate)
+            myresult=JsonTranform.transfrom(x,['day','numbers','late'],3)
         return True, myresult
     
     @staticmethod
