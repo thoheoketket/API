@@ -48,7 +48,7 @@ class GeneralQuery:
                 (
                     select 
                     name, 
-                    max(photoID) as IDphoto 
+                    min(photoID) as IDphoto 
                     from 
                     monitor 
                     GROUP by 
@@ -148,7 +148,7 @@ class GeneralQuery:
                 (
                     select 
                     name, 
-                    max(photoID) as IDphoto 
+                    min(photoID) as IDphoto 
                     from 
                     monitor
                     group by name
@@ -161,79 +161,6 @@ class GeneralQuery:
             myresult=mycursor.fetchall()
             return myresult
         
-
-        '''in ra các ngày vắng mặt của từng người kèm theo thứ của ngày hôm đó'''
-        if DateChecker.check_logic_date(sdate,edate):
-            sql="""
-                select
-                Z.name,
-                Z.day,
-                DAYNAME(Z.day)
-                from
-                (
-                    select
-                    X.name,
-                    Y.day
-                    from
-                    (
-                        SELECT
-                        name,
-                        DATE(datetime) as day
-                        FROM
-                        monitor
-                        WHERE
-                        datetime >= %s
-                        AND datetime < %s
-                        group by
-                        name,
-                        day
-                    ) as X,
-                    (
-                        SELECT
-                        DATE(datetime) as day
-                        FROM
-                        monitor
-                        WHERE
-                        datetime >= %s
-                        AND datetime < %s
-                        group by
-                        day
-                    ) as Y
-                    where
-                    X.day != Y.day
-                    and Y.day not in (
-                        SELECT
-                        day
-                        from
-                        (
-                            SELECT
-                            name,
-                            DATE(datetime) as day
-                            FROM
-                            monitor
-                            WHERE
-                            datetime >= %s
-                            AND datetime < %s
-                            group by
-                            name,
-                            day
-                        ) as X2
-                        where
-                        X2.name = X.name
-                    )
-                    GROUP by
-                    X.name,
-                    Y.day
-                ) as Z
-                Where
-                DAYOFWEEK(Z.day)<> 1
-                and DAYOFWEEK(Z.day)<> 7
-                """
-            val=(sdate,edate,sdate,edate,sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
-            return myresult
-
     @staticmethod
     def count_OTdays(sdate,edate):
         if DateChecker.check_logic_date(sdate,edate):
@@ -285,7 +212,7 @@ class GeneralQuery:
                 (
                     select 
                     name, 
-                    max(photoID) as IDphoto 
+                    min(photoID) as IDphoto 
                     from 
                     monitor 
                     group by 
@@ -349,7 +276,7 @@ class GeneralQuery:
                 (
                     select 
                     name, 
-                    max(photoID) as IDphoto 
+                    min(photoID) as IDphoto 
                     from 
                     monitor 
                     group by 
