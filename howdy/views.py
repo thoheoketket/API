@@ -16,6 +16,7 @@ def detect_api(request):
         status, result= SqlRequest.request_all(request_data)
     except:
         SqlRequest.reconnect()
+        status, result= SqlRequest.request_all(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:
@@ -31,6 +32,7 @@ def one_detect_api(request):
         status, result= SqlRequest.request_one(request_data)      
     except:
         SqlRequest.reconnect()
+        status, result= SqlRequest.request_all(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:
