@@ -2,20 +2,27 @@ import mysql.connector
 from datetime import datetime
 from .checkinput import *
 
-mydb=mysql.connector.connect(
-    host="192.168.51.28",
-    user="hiface",
-    passwd="Tinhvan@123",
-    database="faceid"
-)
-mycursor = mydb.cursor() 
+# mydb=mysql.connector.connect(
+#     host="192.168.51.28",
+#     user="hiface",
+#     passwd="Tinhvan@123",
+#     database="faceid"
+# )
+# self.mycursor = mydb.cursor() 
 
 
 class SpecificQuery:
 
-
-    @staticmethod
-    def get_photoID(name,sdate,edate):
+    def __init__(self):
+        self.mydb=mysql.connector.connect(
+            host="192.168.51.28",
+            user="hiface",
+            passwd="Tinhvan@123",
+            database="faceid"
+        )
+        self.mycursor = self.mydb.cursor() 
+   
+    def get_photoID(self,name,sdate,edate):
         sql="""
             SELECT name, min(photoID)
             FROM monitor 
@@ -25,13 +32,13 @@ class SpecificQuery:
                 AND name = %s
         """
         val=(sdate,edate,name)
-        mycursor.execute(sql,val)
-        myresults=mycursor.fetchall()
+        self.mycursor.execute(sql,val)
+        myresults=self.mycursor.fetchall()
         return myresults[0][1]
 
 
-    @staticmethod
-    def show_workdays(name,sdate,edate):
+   
+    def show_workdays(self,name,sdate,edate):
         '''các ngày đi làm của một người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -50,12 +57,12 @@ class SpecificQuery:
                     day
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
 
-    @staticmethod
-    def count_lateworking_days(name,sdate,edate):
+   
+    def count_lateworking_days(self,name,sdate,edate):
         '''đếm các ngày đến muộn sau thời gian quy định'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -88,12 +95,12 @@ class SpecificQuery:
                     name
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
         
-    @staticmethod
-    def count_earlyworking_days(name,sdate,edate):
+   
+    def count_earlyworking_days(self,name,sdate,edate):
         '''đếm các ngày đến sớm trước thời gian quy định'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -126,12 +133,12 @@ class SpecificQuery:
                     name
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult    
 
-    @staticmethod
-    def count_absent_days(name,sdate,edate):
+   
+    def count_absent_days(self,name,sdate,edate):
         '''đếm các ngày vắng mặt không tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -164,12 +171,12 @@ class SpecificQuery:
                     name
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult    
 
-    @staticmethod
-    def count_working_days(name,sdate,edate):
+   
+    def count_working_days(self,name,sdate,edate):
         '''đếm các ngày đi làm không tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -197,12 +204,12 @@ class SpecificQuery:
                     X.name
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult    
 
-    @staticmethod
-    def count_ot_days(name,sdate,edate):
+   
+    def count_ot_days(self,name,sdate,edate):
         '''đếm các ngày làm thêm giờ tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -242,12 +249,12 @@ class SpecificQuery:
                 group by name
                 """
             val=(sdate,edate,name)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult    
 
-    @staticmethod
-    def count_ot_hours(name,sdate,edate):
+   
+    def count_ot_hours(self,name,sdate,edate):
         '''số giờ làm thêm với ngày thường và thứ 7 chủ nhật tách riêng'''
         sql="""
             SELECT
@@ -396,13 +403,13 @@ class SpecificQuery:
             name
         """
         val=(sdate,edate,name,sdate,edate,name,sdate,edate,name)
-        mycursor.execute(sql,val)
-        myresult=mycursor.fetchall()
+        self.mycursor.execute(sql,val)
+        myresult=self.mycursor.fetchall()
         return myresult
 
 
-    @staticmethod
-    def show_ot_days(name,sdate,edate):
+   
+    def show_ot_days(self,name,sdate,edate):
         '''in ra những ngày làm thêm giờ tính thứ 7, CN'''
         sql="""
             SELECT
@@ -442,6 +449,6 @@ class SpecificQuery:
             OR DAYOFWEEK(X.day)= 7   
         """       
         val=(sdate,edate,name)
-        mycursor.execute(sql,val)
-        myresult=mycursor.fetchall()
+        self.mycursor.execute(sql,val)
+        myresult=self.mycursor.fetchall()
         return myresult 

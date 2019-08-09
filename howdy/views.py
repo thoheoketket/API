@@ -12,11 +12,13 @@ from .sqlrequest import *
 @api_view(['GET'])
 def detect_api(request):
     request_data = request.GET.dict()
+    query=SqlRequest()
+    query.__init__()
     try:
-        status, result= SqlRequest.request_all(request_data)
+        status, result= query.request_all(request_data)
     except:
-        SqlRequest.reconnect()
-        status, result= SqlRequest.request_all(request_data)
+        query.__init__()
+        status, result= query.request_all(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:
@@ -28,11 +30,12 @@ def detect_api(request):
 @api_view(['GET'])
 def one_detect_api(request):
     request_data = request.GET.dict()
+    query=SqlRequest()
     try:
-        status, result= SqlRequest.request_one(request_data)      
+        status, result= query.request_one(request_data)      
     except:
-        SqlRequest.reconnect()
-        status, result= SqlRequest.request_all(request_data)
+        query.__init__()
+        status, result= query.request_one(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
     elif len(result)!=0:

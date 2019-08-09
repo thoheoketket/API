@@ -2,20 +2,27 @@ import mysql.connector
 from datetime import datetime
 from .checkinput import *
 
-mydb=mysql.connector.connect(
-    host="192.168.51.28",
-    user="hiface",
-    passwd="Tinhvan@123",
-    database="faceid"
-)
-mycursor = mydb.cursor() 
+# mydb=mysql.connector.connect(
+#     host="192.168.51.28",
+#     user="hiface",
+#     passwd="Tinhvan@123",
+#     database="faceid"
+# )
+# self.mycursor = mydb.cursor() 
 
 
 class GeneralQuery:
 
-
-    @staticmethod
-    def count_all_workdays(sdate,edate):
+    def __init__(self):
+        self.mydb=mysql.connector.connect(
+            host="192.168.51.28",
+            user="hiface",
+            passwd="Tinhvan@123",
+            database="faceid"
+        )
+        self.mycursor = self.mydb.cursor() 
+    
+    def count_all_workdays(self,sdate,edate):
         '''số ngày đi làm tính cả thứ 7, chủ nhật của tất cả mọi người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -58,12 +65,12 @@ class GeneralQuery:
                 M.name = N.name
             """
             val=(sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
 
-    @staticmethod
-    def count_all_absences(sdate,edate):
+    
+    def count_all_absences(self,sdate,edate):
         '''đếm số ngày vắng không phải t7-cn của tất cả mọi người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
@@ -157,12 +164,12 @@ class GeneralQuery:
                 M.name = N.name
             """
             val=(sdate,edate,sdate,edate,sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
         
-    @staticmethod
-    def count_OTdays(sdate,edate):
+   
+    def count_OTdays(self,sdate,edate):
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
                 SELECT 
@@ -222,76 +229,55 @@ class GeneralQuery:
                 M.name = N.name              
             """
             val=(sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
 
-    @staticmethod
-    def count_latedays(sdate,edate):
+   
+    def count_latedays(self,sdate,edate):
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
                 SELECT 
-                M.name, 
-                M.latedays, 
-                N.IDphoto 
+                M.name, count(M.day) as latedays, min(M.IDphoto) as photoID
                 from 
                 (
                     SELECT 
-                    X.name, 
-                    count(X.day) as latedays 
-                    from 
+                    name, DATE(datetime) as day, min(datetime) as gioden, max(datetime) as giove, min(photoID) as IDphoto
+                    FROM 
+                    monitor 
+                    WHERE 
+                    datetime >= %s AND datetime < %s
+                    group by 
+                    name, day
+                ) AS M, 
+                (
+                    SELECT 
+                    E.name, 
+                    X.start_time, X.end_time, X.lunch_start, X.lunch_end
+                    FROM 
+                    employee as E, 
                     (
                         SELECT 
-                        name, 
-                        DATE(datetime) as day, 
-                        min(datetime) as gioden, 
-                        max(datetime) as giove 
+                        department.id, work_time.start_time, work_time.end_time, work_time.lunch_start, work_time.lunch_end
                         FROM 
-                        monitor 
+                        department, work_time 
                         WHERE 
-                        datetime >= %s
-                        AND datetime < %s 
-                        group by 
-                        name, 
-                        day
-                    ) As X 
+                        department.id_work_time = work_time.id
+                    ) as X 
                     where 
-                    (
-                        (
-                        (
-                            HOUR(gioden)= 9 
-                            and MINUTE(gioden)> 5
-                        ) 
-                        OR HOUR(gioden)> 9
-                        ) 
-                        and HOUR(gioden)< 12
-                    ) 
-                    OR (
-                        HOUR(gioden) BETWEEN 14 
-                        and 17
-                    ) 
-                    group by 
-                    name
-                ) as M, 
-                (
-                    select 
-                    name, 
-                    min(photoID) as IDphoto 
-                    from 
-                    monitor 
-                    group by 
-                    name
+                    X.id = E.id_depart
                 ) as N 
-                WHERE 
-                M.name = N.name   
+                where 
+                M.name = N.name and TIME(M.gioden)> N.start_time and TIME(M.gioden)<=N.lunch_start
+                GROUP by name
             """
             val=(sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
 
-    @staticmethod        
-    def count_by_day(sdate,edate):
+           
+    def count_by_day(self,sdate,edate):
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
                 SELECT 
@@ -333,8 +319,8 @@ class GeneralQuery:
                     ON M.day = N.day
             """
             val=(sdate,edate,sdate,edate)
-            mycursor.execute(sql,val)
-            myresult=mycursor.fetchall()
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
             return myresult
 
 
