@@ -21,10 +21,8 @@ def detect_api(request):
         status, result= query.request_all(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
-    elif len(result)!=0:
-        return JsonResponse({"recevied": result})
     else:
-        return JsonResponse({"revevied": "No values"})
+        return JsonResponse({"recevied": result})
 
 
 @api_view(['GET'])
@@ -38,9 +36,7 @@ def one_detect_api(request):
         status, result= query.request_one(request_data)
     if not status:
         return HttpResponseBadRequest("sai ngày tháng")
-    elif len(result)!=0:
-        return JsonResponse({"recevied": result})
     else:
-        return JsonResponse({"revevied": "No values"})
+        return JsonResponse({"recevied": result})
     
             

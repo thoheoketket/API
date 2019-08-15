@@ -35,8 +35,6 @@ class SpecificQuery:
         self.mycursor.execute(sql,val)
         myresults=self.mycursor.fetchall()
         return myresults[0][1]
-
-
    
     def show_workdays(self,name,sdate,edate):
         '''các ngày đi làm của một người'''
@@ -61,83 +59,222 @@ class SpecificQuery:
             myresult=self.mycursor.fetchall()
             return myresult
 
-   
     def count_lateworking_days(self,name,sdate,edate):
         '''đếm các ngày đến muộn sau thời gian quy định'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
-                SELECT 
-                    X.name, 
-                    count(day) as latearrivaldays
-                from 
+                    SELECT
+                        M.name,
+                        count(M.day) as latedays
+                    from
                     (
-                        SELECT 
-                        name, 
-                        DATE(datetime) as day, 
-                        min(datetime) as arrivaltime, 
-                        max(datetime) as closingtime 
-                        FROM 
-                        monitor 
-                        WHERE 
-                        datetime >= %s 
+                        SELECT
+                        name,
+                        DATE(datetime) as day,
+                        min(datetime) as gioden,
+                        max(datetime) as giove
+                        FROM
+                        monitor
+                        WHERE
+                        datetime >= %s
                         AND datetime < %s
-                        AND name = %s
-                        group by 
+                        AND name=%s
+                        group by
                         day
-                    ) As X 
-                where 
-                    HOUR(X.arrivaltime)> 9 
-                    OR (
-                        MINUTE(X.arrivaltime)> 5 
-                        AND HOUR(X.arrivaltime)= 9
-                    ) 
-                GROUP by 
-                    name
-                """
+                    ) As M,
+                    (
+                        SELECT
+                        E.name,
+                        X.start_time,
+                        X.end_time,
+                        X.lunch_start,
+                        X.lunch_end
+                        FROM
+                        employee as E,
+                        (
+                            SELECT
+                            department.id,
+                            work_time.start_time,
+                            work_time.end_time,
+                            work_time.lunch_start,
+                            work_time.lunch_end
+                            FROM
+                            department,
+                            work_time
+                            WHERE
+                            department.id_work_time = work_time.id
+                        ) as X
+                        where
+                        X.id = E.id_depart
+                    ) as N
+                    where
+                        M.name = N.name
+                        and ((TIME(M.gioden)> N.start_time and TIME(M.gioden)<=N.lunch_start)
+                        or (TIME(M.gioden)>N.lunch_end and TIME(M.giove)<N.end_time))
+                    GROUP by M.name
+            """
             val=(sdate,edate,name)
             self.mycursor.execute(sql,val)
             myresult=self.mycursor.fetchall()
-            return myresult
-        
+            return myresult       
    
-    def count_earlyworking_days(self,name,sdate,edate):
-        '''đếm các ngày đến sớm trước thời gian quy định'''
+    def show_lateday(self,name,sdate,edate):
+        '''in ra các ngày đến muộn của một người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
-                SELECT 
-                    X.name, 
-                    count(day) as earlyarrivaldays
-                from 
+                SELECT
+                    M.name,
+                    M.day as lateday
+                from
+                (
+                    SELECT
+                    name,
+                    DATE(datetime) as day,
+                    min(datetime) as gioden,
+                    max(datetime) as giove
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    AND name=%s
+                    group by
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name,
+                    X.start_time,
+                    X.end_time,
+                    X.lunch_start,
+                    X.lunch_end
+                    FROM
+                    employee as E,
                     (
-                        SELECT 
-                        name, 
-                        DATE(datetime) as day, 
-                        min(datetime) as arrivaltime, 
-                        max(datetime) as closingtime 
-                        FROM 
-                        monitor 
-                        WHERE 
-                        datetime >= %s 
-                        AND datetime < %s
-                        AND name = %s
-                        group by 
-                        day
-                    ) As X 
-                where 
-                    HOUR(X.arrivaltime)< 9 
-                    OR (
-                        MINUTE(X.arrivaltime)<= 5 
-                        AND HOUR(X.arrivaltime)= 9
-                    ) 
-                GROUP by 
-                    name
-                """
+                        SELECT
+                        department.id,
+                        work_time.start_time,
+                        work_time.end_time,
+                        work_time.lunch_start,
+                        work_time.lunch_end
+                        FROM
+                        department,
+                        work_time
+                        WHERE
+                        department.id_work_time = work_time.id
+                    ) as X
+                    where
+                    X.id = E.id_depart
+                ) as N
+                where
+                    M.name = N.name
+                    and ((TIME(M.gioden)> N.start_time and TIME(M.gioden)<=N.lunch_start)
+                    or (TIME(M.gioden)>N.lunch_end and TIME(M.giove)<N.end_time))
+            """
             val=(sdate,edate,name)
             self.mycursor.execute(sql,val)
             myresult=self.mycursor.fetchall()
             return myresult    
 
-   
+    def count_earlyworking_days(self,name,sdate,edate):
+        '''đếm các ngày đến sớm trước thời gian quy định'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT 
+                M.name, 
+                COUNT(M.day) as earlydays 
+                from 
+                (
+                    SELECT 
+                    name, 
+                    DATE(datetime) as day, 
+                    min(datetime) as gioden 
+                    FROM 
+                    monitor 
+                    WHERE 
+                    datetime >= %s
+                    AND datetime < %s
+                    AND name = %s
+                    group by 
+                    day
+                ) As M, 
+                (
+                    SELECT 
+                    E.name, 
+                    X.start_time 
+                    FROM 
+                    employee as E, 
+                    (
+                        SELECT 
+                        department.id, 
+                        work_time.start_time 
+                        FROM 
+                        department, 
+                        work_time 
+                        WHERE 
+                        department.id_work_time = work_time.id
+                    ) as X 
+                    where 
+                    X.id = E.id_depart
+                ) as N 
+                where 
+                M.name = N.name and TIME(M.gioden)< N.start_time 
+                GROUP by name
+            """
+            val=(sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult    
+
+    def show_earlydays(self,name,sdate,edate):
+        '''hiển thị các ngày đến sớm trước thời gian quy định'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+               SELECT 
+                M.name, 
+                M.day as earlyday
+                from 
+                (
+                    SELECT 
+                    name, 
+                    DATE(datetime) as day, 
+                    min(datetime) as gioden 
+                    FROM 
+                    monitor 
+                    WHERE 
+                    datetime >= %s
+                    AND datetime < %s
+                    AND name = %s
+                    group by 
+                    day
+                ) As M, 
+                (
+                    SELECT 
+                    E.name, 
+                    X.start_time 
+                    FROM 
+                    employee as E, 
+                    (
+                        SELECT 
+                        department.id, 
+                        work_time.start_time 
+                        FROM 
+                        department, 
+                        work_time 
+                        WHERE 
+                        department.id_work_time = work_time.id
+                    ) as X 
+                    where 
+                    X.id = E.id_depart
+                ) as N 
+                where 
+                M.name = N.name and TIME(M.gioden)< N.start_time 
+            """
+            val=(sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult 
+    
     def count_absent_days(self,name,sdate,edate):
         '''đếm các ngày vắng mặt không tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
@@ -174,8 +311,7 @@ class SpecificQuery:
             self.mycursor.execute(sql,val)
             myresult=self.mycursor.fetchall()
             return myresult    
-
-   
+  
     def count_working_days(self,name,sdate,edate):
         '''đếm các ngày đi làm không tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
@@ -208,247 +344,282 @@ class SpecificQuery:
             myresult=self.mycursor.fetchall()
             return myresult    
 
-   
     def count_ot_days(self,name,sdate,edate):
         '''đếm các ngày làm thêm giờ tính thứ 7, chủ nhật'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
                 SELECT
-                    X.name,
-                    count(X.day) as otdays
+                M.name,
+                count(M.day) as OTdays
                 from
+                (
+                    SELECT
+                    name,
+                    DATE(datetime) as day,
+                    min(datetime) as gioden,
+                    max(datetime) as giove
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    and name=%s
+                    group by
+                    name,
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name,
+                    X.start_time,
+                    X.end_time
+                    FROM
+                    employee as E,
                     (
                         SELECT
-                        name,
-                        DATE(datetime) as day,
-                        min(datetime) as arrivaltime,
-                        max(datetime) as closingtime
+                        department.id,
+                        work_time.start_time,
+                        work_time.end_time
                         FROM
-                        monitor
+                        department,
+                        work_time
                         WHERE
-                        datetime >= %s
-                        AND datetime < %s
-                        AND name = %s
-                        group by
-                        day
-                    ) As X
+                        department.id_work_time = work_time.id
+                    ) as X
+                    where
+                    X.id = E.id_depart
+                ) as N
                 where
-                    (
-                        DAYOFWEEK(X.day)<> 1
-                        and DAYOFWEEK(X.day)<> 7
-                        )
-                        and (
-                        HOUR(X.closingtime)> 17
-                        OR (
-                            MINUTE(X.closingtime)> 30
-                            AND HOUR(X.closingtime)= 17
-                        )
-                    )
-                    OR DAYOFWEEK(X.day)= 1
-                    OR DAYOFWEEK(X.day)= 7
-                group by name
-                """
+                    M.name = N.name
+                    and ((TIME(M.gioden)<=N.start_time and TIME(M.giove)>N.end_time) or (DAYOFWEEK(M.day)=1 or DAYOFWEEK(M.day)=7))
+                group by M.name
+            """
             val=(sdate,edate,name)
             self.mycursor.execute(sql,val)
             myresult=self.mycursor.fetchall()
             return myresult    
 
-   
-    def count_ot_hours(self,name,sdate,edate):
-        '''số giờ làm thêm với ngày thường và thứ 7 chủ nhật tách riêng'''
-        sql="""
-            SELECT
-            Y.name,
-            sum(Y.otminutes)/ 60 as totalOThour,
-            'Weekend' as dayofweek
-            from
-            (
-                SELECT
-                X.name,
-                X.day,
-                X.arrivaltime,
-                X.closingtime,
-                (
-                    (
-                    HOUR(X.closingtime)- HOUR(X.arrivaltime)
-                    )* 60 + (
-                    MINUTE(X.closingtime)- MINUTE(X.arrivaltime)
-                    )
-                ) as otminutes
-                FROM
-                (
-                    select
-                    name,
-                    DATE(datetime) as day,
-                    min(datetime) as arrivaltime,
-                    max(datetime) as closingtime
-                    from
-                    monitor
-                    where
-                    datetime >= %s
-                    and datetime < %s
-                    and name = %s
-                    group by
-                    name,
-                    DATE(datetime)
-                ) as X
-                WHERE
-                DAYOFWEEK(X.day)= 1
-                OR DAYOFWEEK(X.day)= 7
-            ) as Y
-            GROUP by
-            Y.name
-            UNION
-            select
-            Y.name,
-            sum(Y.otminutes)/ 60 as otminutes,
-            'Weekday' as dayofweek
-            from
-            (
-                SELECT
-                X.name,
-                X.day,
-                X.arrivaltime,
-                X.closingtime,
-                (
-                    HOUR(X.closingtime)-17
-                )* 60 + MINUTE(X.closingtime)-30 as otminutes
-                from
-                (
-                    SELECT
-                    name,
-                    DATE(datetime) as day,
-                    min(datetime) as arrivaltime,
-                    max(datetime) as closingtime
-                    FROM
-                    monitor
-                    WHERE
-                    datetime >= %s
-                    AND datetime < %s
-                    AND name = %s
-                    group by
-                    name,
-                    day
-                ) As X
-                where
-                DAYOFWEEK(X.day)<> 1
-                and DAYOFWEEK(X.day)<> 7
-                and (
-                    (
-                    HOUR(X.closingtime)> 17
-                    OR (
-                        MINUTE(X.closingtime)> 30
-                        AND HOUR(X.closingtime)= 17
-                    )
-                    )
-                    and (
-                    (
-                        HOUR(X.arrivaltime)< 17
-                    )
-                    or (
-                        MINUTE(X.arrivaltime)< 30
-                        and HOUR(X.arrivaltime)= 17
-                    )
-                    )
-                )
-                UNION
-                SELECT
-                X.name,
-                X.day,
-                X.arrivaltime,
-                X.closingtime,
-                (
-                    HOUR(X.closingtime)- HOUR(X.arrivaltime)
-                )* 60 + MINUTE(X.closingtime)- MINUTE(X.arrivaltime) as otminutes
-                from
-                (
-                    SELECT
-                    name,
-                    DATE(datetime) as day,
-                    min(datetime) as arrivaltime,
-                    max(datetime) as closingtime
-                    FROM
-                    monitor
-                    WHERE
-                    datetime >= %s
-                    AND datetime < %s
-                    AND name = %s
-                    group by
-                    name,
-                    day
-                ) As X
-                where
-                DAYOFWEEK(X.day)<> 1
-                and DAYOFWEEK(X.day)<> 7
-                and (
-                    (
-                    HOUR(X.closingtime)> 17
-                    OR (
-                        MINUTE(X.closingtime)> 30
-                        AND HOUR(X.closingtime)= 17
-                    )
-                    )
-                    and (
-                    (
-                        HOUR(X.arrivaltime)> 17
-                    )
-                    or (
-                        MINUTE(X.arrivaltime)> 30
-                        and HOUR(X.arrivaltime)= 17
-                    )
-                    )
-                )
-            ) as Y
-            group by
-            name
-        """
-        val=(sdate,edate,name,sdate,edate,name,sdate,edate,name)
-        self.mycursor.execute(sql,val)
-        myresult=self.mycursor.fetchall()
-        return myresult
-
-
-   
     def show_ot_days(self,name,sdate,edate):
         '''in ra những ngày làm thêm giờ tính thứ 7, CN'''
-        sql="""
-            SELECT
-            X.name,
-            X.day
-            from
-            (
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
                 SELECT
-                name,
-                DATE(datetime) as day,
-                min(datetime) as arrivaltime,
-                max(datetime) as closingtime
-                FROM
-                monitor
-                WHERE
-                datetime >= %s
-                AND datetime < %s
-                AND name = %s
-                group by
-                day
-            ) As X
-            where
-            (
+                M.name,
+                M.day as OTday
+                from
                 (
-                DAYOFWEEK(X.day)<> 1
-                and DAYOFWEEK(X.day)<> 7
-                )
-                and (
-                HOUR(X.closingtime)> 17
-                OR (
-                    MINUTE(X.closingtime)> 30
-                    AND HOUR(X.closingtime)= 17
-                )
-                )
-            )
-            OR DAYOFWEEK(X.day)= 1
-            OR DAYOFWEEK(X.day)= 7   
-        """       
-        val=(sdate,edate,name)
-        self.mycursor.execute(sql,val)
-        myresult=self.mycursor.fetchall()
-        return myresult 
+                    SELECT
+                    name,
+                    DATE(datetime) as day,
+                    min(datetime) as gioden,
+                    max(datetime) as giove
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    and name=%s
+                    group by
+                    name,
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name,
+                    X.start_time,
+                    X.end_time
+                    FROM
+                    employee as E,
+                    (
+                        SELECT
+                        department.id,
+                        work_time.start_time,
+                        work_time.end_time
+                        FROM
+                        department,
+                        work_time
+                        WHERE
+                        department.id_work_time = work_time.id
+                    ) as X
+                    where
+                    X.id = E.id_depart
+                ) as N
+                where
+                M.name = N.name
+                and ((TIME(M.gioden)<=N.start_time and TIME(M.giove)>N.end_time) or (DAYOFWEEK(M.day)=1 or DAYOFWEEK(M.day)=7))
+            """       
+            val=(sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult 
+
+    def count_ot_hours(self,name,sdate,edate):
+        '''số giờ làm thêm với ngày thường và thứ 7 chủ nhật tách riêng'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT H.name, SEC_TO_TIME(sum(TIME_TO_SEC(ot_hour))) as ot_hours, 'weekend' as dayofweek
+                from (SELECT
+                    X.name,
+                    X.day,
+                    TIMEDIFF(X.giove,X.gioden) as ot_hour
+                    FROM
+                    (
+                        select
+                        name,
+                        DATE(datetime) as day,
+                        min(datetime) as gioden,
+                        max(datetime) as giove
+                        from
+                        monitor
+                        where
+                        datetime >= %s
+                        and datetime < %s
+                        and name = %s
+                        group by
+                        name,
+                        DATE(datetime)
+                    ) as X
+                    WHERE
+                    DAYOFWEEK(X.day)= 1
+                    OR DAYOFWEEK(X.day)= 7) as H
+                GROUP by H.name
+                UNION 
+                SELECT K.name, SEC_TO_TIME(sum(TIME_TO_SEC(ot_hour))) as ot_hours, 'weekday' as dayofweek
+                from (SELECT
+                M.name,
+                M.day as OTday,
+                TIMEDIFF(TIME(M.giove),N.end_time) as ot_hour
+                from
+                (
+                    SELECT
+                    name,
+                    DATE(datetime) as day,
+                    min(datetime) as gioden,
+                    max(datetime) as giove
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    and name=%s
+                    group by
+                    name,
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name,
+                    X.start_time,
+                    X.end_time
+                    FROM
+                    employee as E,
+                    (
+                        SELECT
+                        department.id,
+                        work_time.start_time,
+                        work_time.end_time
+                        FROM
+                        department,
+                        work_time
+                        WHERE
+                        department.id_work_time = work_time.id
+                    ) as X
+                    where
+                    X.id = E.id_depart
+                ) as N
+                where
+                M.name = N.name
+                and TIME(M.gioden)<=N.start_time
+                and TIME(M.giove)>N.end_time
+                and DATE(M.gioden)!=1 and DATE(M.giove)!=7 ) as K
+                group by K.name
+            """
+            val=(sdate,edate,name,sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult
+
+    def count_lackdays(self,name,sdate,edate):
+        '''đếm các ngày làm thiếu công của một người: đến trước max_st hoặc về trước min_et'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT
+                    M.name, count(M.day) as lack_days
+                from
+                (
+                    SELECT
+                        name, DATE(datetime) as day, min(datetime) as gioden, max(datetime) as giove
+                    FROM
+                        monitor
+                    WHERE
+                        datetime >= %s AND datetime < %sand name=%s
+                    group by
+                        name, day
+                ) As M,
+                (
+                    SELECT
+                    E.name, X.max_st, X.min_et
+                    FROM
+                    employee as E,
+                    (
+                        SELECT
+                            department.id, work_time.max_st, work_time.min_et
+                        FROM
+                            department, work_time
+                        WHERE
+                            department.id_work_time = work_time.id
+                    ) as X
+                    where
+                        X.id = E.id_depart
+                ) as N
+                where
+                    M.name = N.name and (TIME(M.gioden)> N.max_st or TIME(M.giove)<=N.min_et)
+                GROUP by name
+            """
+            val=(sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult
+
+    def show_lackdays(self,name,sdate,edate):
+        '''in các ngày làm thiếu công của một người: đến trước max_st hoặc về trước min_et'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT
+                M.name, M.day as lack_day
+                from
+                (
+                    SELECT
+                    name, DATE(datetime) as day,
+                    min(datetime) as gioden, max(datetime) as giove
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s AND datetime < %sand name=%s
+                    group by
+                    name,
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name, X.max_st, X.min_et
+                    FROM
+                    employee as E,
+                    (
+                        SELECT
+                            department.id, work_time.max_st, work_time.min_et
+                        FROM
+                            department, work_time
+                        WHERE
+                            department.id_work_time = work_time.id
+                    ) as X
+                    where
+                        X.id = E.id_depart
+                ) as N
+                where
+                    M.name = N.name and (TIME(M.gioden)> N.max_st or TIME(M.giove)<=N.min_et)
+            """
+            val=(sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult
