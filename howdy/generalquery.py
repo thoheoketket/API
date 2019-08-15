@@ -214,8 +214,7 @@ class GeneralQuery:
                     ) as N
                 where
                     M.name = N.name
-                    and TIME(M.gioden)<=N.start_time
-                    and TIME(M.giove)>N.end_time
+                    and ((TIME(M.gioden)<=N.start_time and TIME(M.giove)>N.end_time) or (DAYOFWEEK(M.day)=1 or DAYOFWEEK(M.day)=7))
                 GROUP by name
             """
             val=(sdate,edate)
