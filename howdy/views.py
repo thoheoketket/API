@@ -2,8 +2,6 @@ from django.shortcuts import render
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.conf import settings
 from rest_framework.decorators import api_view
-import base64
-import numpy as np
 import mysql.connector
 import json
 from .checkinput import DateChecker

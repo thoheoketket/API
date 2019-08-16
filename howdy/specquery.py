@@ -2,14 +2,6 @@ import mysql.connector
 from datetime import datetime
 from .checkinput import *
 
-# mydb=mysql.connector.connect(
-#     host="192.168.51.28",
-#     user="hiface",
-#     passwd="Tinhvan@123",
-#     database="faceid"
-# )
-# self.mycursor = mydb.cursor() 
-
 
 class SpecificQuery:
 
@@ -21,6 +13,10 @@ class SpecificQuery:
             database="faceid"
         )
         self.mycursor = self.mydb.cursor() 
+    
+    def close_connect(self):
+        self.mycursor.close()
+        self.mydb.close()
    
     def get_photoID(self,name,sdate,edate):
         sql="""

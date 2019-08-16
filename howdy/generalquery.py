@@ -2,14 +2,6 @@ import mysql.connector
 from datetime import datetime
 from .checkinput import *
 
-# mydb=mysql.connector.connect(
-#     host="192.168.51.28",
-#     user="hiface",
-#     passwd="Tinhvan@123",
-#     database="faceid"
-# )
-# self.mycursor = mydb.cursor() 
-
 
 class GeneralQuery:
 
@@ -22,6 +14,10 @@ class GeneralQuery:
         )
         self.mycursor = self.mydb.cursor() 
     
+    def close_connect(self):
+        self.mycursor.close()
+        self.mydb.close()
+        
     def count_all_workdays(self,sdate,edate):
         '''số ngày đi làm tính cả thứ 7, chủ nhật của tất cả mọi người'''
         if DateChecker.check_logic_date(sdate,edate):

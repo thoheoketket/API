@@ -5,25 +5,6 @@ from .specquery import *
 # from query_general import *
 class SqlRequest:
 
-    # def __init__(self):
-    #     mydb=mysql.connector.connect(
-    #         host="192.168.51.28",
-    #         user="hiface",
-    #         passwd="Tinhvan@123",
-    #         database="faceid"
-    #     )
-    #     mycursor = mydb.cursor() 
-
-    # @staticmethod
-    # def reconnect():
-    #     global mydb, mycursor
-    #     mydb=mysql.connector.connect(
-    #         host="192.168.51.28",
-    #         user="hiface",
-    #         passwd="Tinhvan@123",
-    #         database="faceid"
-    #     )
-    #     mycursor = mydb.cursor() 
 
     def request_all(self,request_data):
         kind=request_data['kind']
@@ -58,6 +39,7 @@ class SqlRequest:
         else:
             x=query_general.count_by_day(sdate,edate)
             myresult=JsonTranform.transfrom(x,['day','numbers','late'],3)
+        query_general.close_connect()
         return True, myresult
     
     def request_one(self,request_data):
@@ -126,4 +108,5 @@ class SqlRequest:
             json_data=json.dumps(data,ensure_ascii=False)
             json_data_json=json.loads(json_data)
             results.append(json_data_json)  
+        specific_query.close_connect()
         return True, results
