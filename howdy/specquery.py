@@ -8,6 +8,7 @@ class SpecificQuery:
     def __init__(self):
         self.mydb=mysql.connector.connect(
             host="192.168.51.28",
+            # host="14.160.67.114",
             user="hiface",
             passwd="Tinhvan@123",
             database="faceid"
@@ -619,3 +620,66 @@ class SpecificQuery:
             self.mycursor.execute(sql,val)
             myresult=self.mycursor.fetchall()
             return myresult
+
+    def show_absentdays(self,name,sdate,edate):
+        '''hiển thị các ngày nghỉ không phải t7,cn'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT X.name,
+                Y.day
+                from
+                (
+                    SELECT
+                    name,
+                    DATE(datetime) as day
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    and name=%s
+                    group by
+                    name,
+                    day
+                ) as X,
+                (
+                    SELECT
+                    DATE(datetime) as day
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    group by
+                    day
+                ) as Y
+                where
+                X.day != Y.day
+                and Y.day not in (
+                    SELECT
+                    day
+                    from
+                    (
+                        SELECT
+                        name,
+                        DATE(datetime) as day
+                        FROM
+                        monitor
+                        WHERE
+                        datetime >= %s
+                        AND datetime < %s
+                        and name=%s
+                        group by
+                        name,
+                        day
+                    ) as X2
+                    where
+                    X2.name = X.name
+                )
+                and DAYOFWEEK(Y.day)!=1 and DAYOFWEEK(Y.day)!=7
+                GROUP by X.name,Y.day
+            """
+            val=(sdate,edate,name,sdate,edate,sdate,edate,name)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult 

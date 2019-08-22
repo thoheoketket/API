@@ -8,6 +8,7 @@ class GeneralQuery:
     def __init__(self):
         self.mydb=mysql.connector.connect(
             host="192.168.51.28",
+            # host="14.160.67.114",
             user="hiface",
             passwd="Tinhvan@123",
             database="faceid"
@@ -22,43 +23,33 @@ class GeneralQuery:
         '''số ngày đi làm tính cả thứ 7, chủ nhật của tất cả mọi người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
-                select 
-                M.name, 
-                M.appearances, 
-                N.IDphoto 
-                from 
-                (
-                    SELECT 
-                    X.name, 
-                    count(X.day) as appearances 
-                    from 
+                SELECT M.name,M.appearances,N.department as department, M.IDphoto
+                from (SELECT
+                    X.name,
+                    count(X.day) as appearances,
+                    min(X.IDphoto) as IDphoto
+                    from
                     (
-                        SELECT 
-                        name, 
-                        DATE(datetime) as day 
-                        FROM 
-                        monitor 
-                        WHERE 
-                        datetime >= %s 
-                        AND datetime < %s 
-                        group by 
-                        name, 
+                        SELECT
+                        name,
+                        DATE(datetime) as day,
+                        min(photoID) as IDphoto
+                        FROM
+                        monitor
+                        WHERE
+                        datetime >= %s
+                        AND datetime < %s
+                        group by
+                        name,
                         DATE(datetime)
-                    ) as X 
-                    GROUP by 
-                    name
-                ) as M, 
-                (
-                    select 
-                    name, 
-                    min(photoID) as IDphoto 
-                    from 
-                    monitor 
-                    GROUP by 
-                    name
-                ) as N 
-                where 
-                M.name = N.name
+                    ) as X
+                    GROUP by
+                    name) as M,
+                    (SELECT E.name as name,
+                             D.name as department
+                     from  employee as E, department as D
+                      WHERE E.id_depart=D.id) as N
+                    WHERE N.name=M.name  
             """
             val=(sdate,edate)
             self.mycursor.execute(sql,val)
@@ -69,94 +60,70 @@ class GeneralQuery:
         '''đếm số ngày vắng không phải t7-cn của tất cả mọi người'''
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
-                select 
-                M.name, 
-                M.tongngayvang, 
-                N.IDphoto
-                from 
-                (
-                    select 
-                    name, 
-                    count(T.day) as tongngayvang 
+                SELECT M.name,count(M.day) as absents, min(N.department) as department, min(M.IDphoto) as photoID
+                from (select 
+                    X.name, 
+                    Y.day,
+                    min(X.IDphoto) as IDphoto
                     from 
                     (
-                        select 
-                        Z.name, 
-                        Z.day, 
-                        DAYNAME(Z.day) 
+                        SELECT 
+                        name, 
+                        DATE(datetime) as day, 
+                        min(photoID) as IDphoto 
+                        FROM 
+                        monitor 
+                        WHERE 
+                        datetime >= %s
+                        AND datetime < %s 
+                        group by 
+                        name, 
+                        day
+                    ) as X, 
+                    (
+                        SELECT 
+                        DATE(datetime) as day 
+                        FROM 
+                        monitor 
+                        WHERE 
+                        datetime >= %s
+                        AND datetime < %s 
+                        group by 
+                        day
+                    ) as Y 
+                    where 
+                    X.day != Y.day 
+                    and Y.day not in (
+                        SELECT 
+                        day 
                         from 
                         (
-                            select 
-                            X.name, 
-                            Y.day 
-                            from 
-                            (
-                                SELECT 
-                                name, 
-                                DATE(datetime) as day 
-                                FROM 
-                                monitor 
-                                WHERE 
-                                datetime >= %s 
-                                AND datetime < %s
-                                group by 
-                                name, 
-                                day
-                            ) as X, 
-                            (
-                                SELECT 
-                                DATE(datetime) as day 
-                                FROM 
-                                monitor 
-                                WHERE 
-                                datetime >= %s 
-                                AND datetime < %s
-                                group by 
-                                day
-                            ) as Y 
-                            where 
-                            X.day != Y.day 
-                            and Y.day not in (
-                                SELECT 
-                                day 
-                                from 
-                                (
-                                    SELECT 
-                                    name, 
-                                    DATE(datetime) as day 
-                                    FROM 
-                                    monitor 
-                                    WHERE 
-                                    datetime >= %s 
-                                    AND datetime < %s
-                                    group by 
-                                    name, 
-                                    day
-                                ) as X2 
-                                where 
-                                X2.name = X.name
-                            ) 
-                            GROUP by 
-                            X.name, 
-                            Y.day
-                        ) as Z 
-                        Where 
-                        DAYOFWEEK(Z.day)<> 1 
-                        and DAYOFWEEK(Z.day)<> 7
-                    ) as T 
-                    group by 
-                    name
-                ) as M, 
-                (
-                    select 
-                    name, 
-                    min(photoID) as IDphoto 
-                    from 
-                    monitor
-                    group by name
-                ) as N 
-                where 
-                M.name = N.name
+                            SELECT 
+                            name, 
+                            DATE(datetime) as day 
+                            FROM 
+                            monitor 
+                            WHERE 
+                            datetime >= %s
+                            AND datetime < %s 
+                            group by 
+                            name, 
+                            day
+                        ) as X2 
+                        where 
+                        X2.name = X.name
+                    ) 
+                    and DAYOFWEEK(Y.day)>1
+                    and DAYOFWEEK(Y.day)<7
+                    GROUP by 
+                    X.name,
+                    Y.day) as M,
+                            (SELECT E.name as name,
+                                    D.name as department
+                            from  employee as E, department as D
+                            WHERE E.id_depart=D.id) as N
+                WHERE M.name=N.name
+                GROUP by M.name
             """
             val=(sdate,edate,sdate,edate,sdate,edate)
             self.mycursor.execute(sql,val)
@@ -169,6 +136,7 @@ class GeneralQuery:
                 SELECT
                     M.name,
                     count(M.day) as OTday,
+                    N.depart_name as department,
                     min(M.IDphoto) as photoID
                 from
                     (
@@ -190,6 +158,7 @@ class GeneralQuery:
                     (
                     SELECT
                         E.name,
+                        X.name as depart_name,
                         X.start_time,
                         X.end_time
                     FROM
@@ -197,6 +166,7 @@ class GeneralQuery:
                         (
                         SELECT
                             department.id,
+                            department.name,
                             work_time.start_time,
                             work_time.end_time
                         FROM
@@ -211,7 +181,7 @@ class GeneralQuery:
                 where
                     M.name = N.name
                     and ((TIME(M.gioden)<=N.start_time and TIME(M.giove)>N.end_time) or (DAYOFWEEK(M.day)=1 or DAYOFWEEK(M.day)=7))
-                GROUP by name
+                GROUP by M.name, N.depart_name
             """
             val=(sdate,edate)
             self.mycursor.execute(sql,val)
@@ -223,69 +193,9 @@ class GeneralQuery:
         if DateChecker.check_logic_date(sdate,edate):
             sql="""
                 SELECT
-                    M.name,
-                    count(M.day) as latedays,
-                    min(M.IDphoto) as photoID
-                from
-                    (
-                    SELECT
-                        name,
-                        DATE(datetime) as day,
-                        min(datetime) as gioden,
-                        max(datetime) as giove,
-                        min(photoID) as IDphoto
-                    FROM
-                        monitor
-                    WHERE
-                        datetime >= %s
-                        AND datetime < %s
-                    group by
-                        name,
-                        day
-                    ) As M,
-                    (
-                    SELECT
-                        E.name,
-                        X.start_time,
-                        X.end_time,
-                        X.lunch_start,
-                        X.lunch_end
-                    FROM
-                        employee as E,
-                        (
-                        SELECT
-                            department.id,
-                            work_time.start_time,
-                            work_time.end_time,
-                            work_time.lunch_start,
-                            work_time.lunch_end
-                        FROM
-                            department,
-                            work_time
-                        WHERE
-                            department.id_work_time = work_time.id
-                        ) as X
-                    where
-                        X.id = E.id_depart
-                    ) as N
-                where
-                    M.name = N.name
-                    and ((TIME(M.gioden)> N.start_time and TIME(M.gioden)<=N.lunch_start)
-                    or (TIME(M.gioden)>N.lunch_end and TIME(M.giove)<N.end_time))
-                GROUP by name
-            """
-            val=(sdate,edate)
-            self.mycursor.execute(sql,val)
-            myresult=self.mycursor.fetchall()
-            return myresult
-
-    def count_lackdays(self,sdate,edate):
-        '''Đếm số ngày làm thiếu giờ của một người'''
-        if DateChecker.check_logic_date(sdate,edate):
-            sql="""
-                SELECT
                 M.name,
-                count(M.day) as lack_days,
+                count(M.day) as latedays,
+                N.depart_name as department,
                 min(M.IDphoto) as photoID
                 from
                 (
@@ -307,6 +217,72 @@ class GeneralQuery:
                 (
                     SELECT
                     E.name,
+                    X.name as depart_name,
+                    X.start_time,
+                    X.end_time,
+                    X.lunch_start,
+                    X.lunch_end
+                    FROM
+                    employee as E,
+                    (
+                        SELECT
+                        department.id,
+                        department.name,
+                        work_time.start_time,
+                        work_time.end_time,
+                        work_time.lunch_start,
+                        work_time.lunch_end
+                        FROM
+                        department,
+                        work_time
+                        WHERE
+                        department.id_work_time = work_time.id
+                    ) as X
+                    where
+                    X.id = E.id_depart
+                ) as N
+                where
+                M.name = N.name
+                and ((TIME(M.gioden)> N.start_time
+                and TIME(M.gioden)<=N.lunch_start)
+                or (TIME(M.gioden)>N.lunch_end and TIME(M.giove)<N.end_time))
+                GROUP by M.name, N.depart_name
+            """
+            val=(sdate,edate)
+            self.mycursor.execute(sql,val)
+            myresult=self.mycursor.fetchall()
+            return myresult
+
+    def count_lackdays(self,sdate,edate):
+        '''Đếm số ngày làm thiếu giờ của một người'''
+        if DateChecker.check_logic_date(sdate,edate):
+            sql="""
+                SELECT
+                M.name,
+                count(M.day) as lack_days,
+                N.depart_name as department,
+                min(M.IDphoto) as photoID
+                from
+                (
+                    SELECT
+                    monitor.name,
+                    DATE(datetime) as day,
+                    min(datetime) as gioden,
+                    max(datetime) as giove,
+                    min(photoID) as IDphoto
+                    FROM
+                    monitor
+                    WHERE
+                    datetime >= %s
+                    AND datetime < %s
+                    group by
+                    name,
+                    day
+                ) As M,
+                (
+                    SELECT
+                    E.name,
+                    X.name as depart_name,
                     X.start_time,
                     X.end_time,
                     X.max_st,
@@ -316,6 +292,7 @@ class GeneralQuery:
                     (
                         SELECT
                         department.id,
+                            department.name,
                         work_time.start_time,
                         work_time.end_time,
                         work_time.max_st,
@@ -334,7 +311,7 @@ class GeneralQuery:
                 and
                 (TIME(M.gioden)> N.max_st
                 or TIME(M.giove)<=N.min_et)
-                GROUP by name
+                GROUP by M.name,N.depart_name
             """
             val=(sdate,edate)
             self.mycursor.execute(sql,val)
@@ -347,49 +324,52 @@ class GeneralQuery:
             sql="""
                 SELECT T.name,
                     COUNT(T.lunch_time) as days,
+                    T.depart_name as department,
                     MIN(T.IDphoto) as IDphoto
                 from (SELECT
-                    M.name,
-                    DATE(M.datetime) as day,
-                    max(M.datetime) as lunch_time,
-                    MIN(M.photoID) as IDphoto
+                M.name,
+                N.depart_name,
+                DATE(M.datetime) as day,
+                max(M.datetime) as lunch_time,
+                MIN(M.photoID) as IDphoto
+                FROM
+                    monitor as M, 
+                    (SELECT
+                        E.name,
+                        X.name as depart_name,
+                        X.start_time,
+                        X.lunch_start,
+                        X.lunch_end
                     FROM
-                        monitor as M, 
-                        (SELECT
-                            E.name,
-                            X.start_time,
-                            X.lunch_start,
-                            X.lunch_end
-                            FROM
-                                employee as E,
-                                (
-                                    SELECT
-                                    department.id,
-                                    work_time.start_time,
-                                    work_time.lunch_start,
-                                    work_time.lunch_end
-                                    FROM
-                                        department,
-                                        work_time
-                                    WHERE
-                                        department.id_work_time = work_time.id
-                                ) as X
-                                where
-                                    X.id = E.id_depart
-                        ) as N
-                    WHERE
-                    M.name=N.name 
-                    and M.datetime >= %s
-                    AND M.datetime < %s
-                    and TIME(M.datetime)>=N.start_time
-                    and TIME(M.datetime)<=N.lunch_start
-                    and TIME(M.datetime)>=TIME('11:30:00')
-                    and TIME(M.datetime)<=TIME('12:30:00')
-                    group by
-                    M.name,
-                    DATE(M.datetime)
-                ) as T
-                GROUP by name
+                        employee as E,
+                        (
+                            SELECT
+                                department.id,
+                                department.name,
+                                work_time.start_time,
+                                work_time.lunch_start,
+                                work_time.lunch_end
+                                FROM
+                                department,
+                                work_time
+                                WHERE
+                                department.id_work_time = work_time.id
+                            ) as X
+                            where
+                            X.id = E.id_depart) as N
+                WHERE
+                M.name=N.name and
+                M.datetime >= %s
+                AND M.datetime < %s
+                and TIME(M.datetime)>=N.start_time
+                and TIME(M.datetime)<=N.lunch_start
+                and TIME(M.datetime)>=TIME('11:30:00')
+                and TIME(M.datetime)<=TIME('12:30:00')
+                group by
+                M.name,
+                DATE(M.datetime),
+                N.depart_name) as T
+                GROUP by T.name,T.depart_name
             """
             val=(sdate,edate)
             self.mycursor.execute(sql,val)
